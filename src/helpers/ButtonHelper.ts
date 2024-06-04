@@ -1,3 +1,5 @@
+// Remaps the Carthing buttons to events that can be used elsewhere in the code
+
 export enum Button {
   BUTTON_1,
   BUTTON_2,
@@ -8,9 +10,10 @@ export enum Button {
   SCROLL_RIGHT,
   SCROLL_PRESS,
   FRONT_BUTTON,
+  OTHER,
 }
 
-export enum EventFlavour {
+export enum EventFlavor {
   Down,
   Up,
   Long,
@@ -34,48 +37,73 @@ function mapButton(event: string): Button {
     case 'Escape':
       return Button.FRONT_BUTTON;
     default:
-      throw new Error("I don't know this button");
+      //throw new Error("I don't know this button " + event);
+      return Button.OTHER;
   }
 }
 
-function listenerKey(btn: Button, flv: EventFlavour): string {
+function listenerKey(btn: Button, flv: EventFlavor): string {
   return `${btn}_${flv}`;
 }
 
-export default class ButtonHelper {
-  listeners: Map<string, ((btn: Button, flv: EventFlavour) => void)[]>;
+class ButtonHelper {
+  listeners: Map<string, ((btn: Button, flv: EventFlavor) => void)[]>;
+  buttonStates: { [key: string]: EventFlavor };
+  callback: ((btn: Button, flv: EventFlavor) => void) | null = null;
+
   constructor() {
     this.listeners = new Map();
+    this.buttonStates = {};
     document.addEventListener('wheel', this.wheelEventHandler);
     document.addEventListener('keydown', this.keyDownEventHandler);
     document.addEventListener('keyup', this.keyUpEventHandler);
   }
 
-  addListener(btn: Button, flv: EventFlavour, fn: (btn: Button, flv: EventFlavour) => void): void {
+  getButtonStates(): { [key: string]: EventFlavor } {
+    return { ...this.buttonStates };
+  }
+
+  addListener(btn: Button, flv: EventFlavor, fn: (btn: Button, flv: EventFlavor) => void): void {
     const currentListeners = this.listeners.get(listenerKey(btn, flv)) || [];
     this.listeners.set(listenerKey(btn, flv), [...currentListeners, fn]);
+  }
+  removeListener(btn: Button, flv: EventFlavor): void {
+    this.listeners.delete(listenerKey(btn, flv));
+  }
+
+  setCallback(callback: (btn: Button, flv: EventFlavor) => void): void {
+    this.callback = callback;
   }
 
   private wheelEventHandler = (event: WheelEvent) => {
     if (event.deltaX < 0) {
-      this.notify(Button.SCROLL_LEFT, EventFlavour.Short);
+      this.notify(Button.SCROLL_LEFT, EventFlavor.Short);
     } else if (event.deltaX > 0) {
-      this.notify(Button.SCROLL_RIGHT, EventFlavour.Short);
+      this.notify(Button.SCROLL_RIGHT, EventFlavor.Short);
     }
   };
 
-  private notify(btn: Button, flv: EventFlavour) {
+  private notify(btn: Button, flv: EventFlavor) {
     const currentListeners = this.listeners.get(listenerKey(btn, flv)) || [];
     for (const listener of currentListeners) {
       listener(btn, flv);
     }
+    if (this.callback) {
+      this.callback(btn, flv);
+    }
   }
 
   private keyDownEventHandler = (event: KeyboardEvent) => {
-    this.notify(mapButton(event.code), EventFlavour.Down);
+    const button = mapButton(event.code);
+    this.buttonStates[button] = EventFlavor.Down;
+    this.notify(button, EventFlavor.Down);
   };
 
   private keyUpEventHandler = (event: KeyboardEvent) => {
-    this.notify(mapButton(event.code), EventFlavour.Up);
+    const button = mapButton(event.code);
+    this.buttonStates[button] = EventFlavor.Up;
+    this.notify(button, EventFlavor.Up);
   };
 }
+
+export default ButtonHelper;
