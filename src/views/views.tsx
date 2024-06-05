@@ -1,32 +1,40 @@
 import React, { useEffect, useState } from 'react';
 import ButtonHelper, { Button, EventFlavor } from '../helpers/ButtonHelper';
 
-const ViewManager = () => {
-  const [currentView, setCurrentView] = useState('default');
+const ViewManager = (): JSX.Element => {
+  const [viewStack, setViewStack] = useState(['default']);
   const buttonHelper = new ButtonHelper();
 
   useEffect(() => {
     const handleButtonPress = (btn: Button, flv: EventFlavor) => {
       if (flv === EventFlavor.Up) {
+        const newStack = [...viewStack];
+        let newView = '';
         switch (btn) {
           case Button.BUTTON_1:
-            setCurrentView('view1');
+            newView = 'view1';
             break;
           case Button.BUTTON_2:
-            setCurrentView('view2');
+            newView = 'view2';
             break;
           case Button.BUTTON_3:
-            setCurrentView('view3');
+            newView = 'view3';
             break;
           case Button.BUTTON_4:
-            setCurrentView('view4');
+            newView = 'view4';
             break;
           case Button.FRONT_BUTTON:
-            setCurrentView('default');
+            if (newStack.length > 1) {
+              newStack.pop();
+            }
             break;
           default:
             break;
         }
+        if (newView && newView !== newStack[newStack.length - 1]) {
+          newStack.push(newView);
+        }
+        setViewStack(newStack);
       }
     };
 
@@ -37,9 +45,10 @@ const ViewManager = () => {
     return () => {
       buttonHelper.setCallback(noOpCallback);
     };
-  }, [buttonHelper]);
+  }, [buttonHelper, viewStack]);
 
   const renderView = () => {
+    const currentView = viewStack[viewStack.length - 1];
     switch (currentView) {
       case 'view1':
         return <div>View 1</div>;
